@@ -18,7 +18,7 @@ plt.rcParams['font.sans-serif'] = ['Yu Gothic', 'MS Gothic', 'Hiragino Sans', 'I
 plt.rcParams['axes.unicode_minus'] = False
 
 # Excelファイルパス（固定）
-LOG_FILE = r"C:\Users\akasaka.kazuyuki\OneDrive - ユーザーサイド株式会社\strat-lab\strat-lab\10_Daily\11_工数管理\Pythonログ\work_log.xlsx"
+LOG_FILE = "work_log.xlsx"
 
 # カスタムCSS
 st.markdown("""
@@ -188,4 +188,5 @@ st.dataframe(display_df, use_container_width=True, height=400)
 
 # フッター
 st.markdown("---")
+
 st.caption("🔄 データは60秒ごとに自動更新されます")
