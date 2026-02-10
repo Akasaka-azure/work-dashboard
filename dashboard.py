@@ -3,8 +3,9 @@ import pandas as pd
 from datetime import datetime, timedelta
 from collections import defaultdict
 import matplotlib.pyplot as plt
+import requests
+from io import BytesIO
 from openpyxl import load_workbook
-import os
 
 # ページ設定
 st.set_page_config(
@@ -17,8 +18,8 @@ st.set_page_config(
 plt.rcParams['font.sans-serif'] = ['Yu Gothic', 'MS Gothic', 'Hiragino Sans', 'IPAexGothic']
 plt.rcParams['axes.unicode_minus'] = False
 
-# Excelファイルパス（固定）
-LOG_FILE = "work_log.xlsx"
+# OneDrive共有リンク（直接ダウンロード用に変換）
+ONEDRIVE_LINK = "https://userside7700-my.sharepoint.com/:x:/g/personal/akasaka_kazuyuki_userside_inc/IQCyX3lcp3rEQ5ssKzMfDZ9lAUIzvTWizs89LOSGMEExLGo?e=IGL4yS&download=1"
 
 # カスタムCSS
 st.markdown("""
@@ -42,38 +43,44 @@ st.markdown("---")
 # データ読み込み
 @st.cache_data(ttl=60)  # 60秒キャッシュ
 def load_data():
-    if not os.path.exists(LOG_FILE):
-        return pd.DataFrame()
-    
-    wb = load_workbook(LOG_FILE)
-    ws = wb.active
-    data = []
-    
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if row[0]:
-            try:
-                date_str = str(row[0]).split()[0]
-                for fmt in ("%Y/%m/%d", "%Y-%m-%d"):
-                    try:
-                        row_date = datetime.strptime(date_str, fmt).date()
-                        break
-                    except:
+    try:
+        # OneDriveから直接ダウンロード
+        response = requests.get(ONEDRIVE_LINK)
+        response.raise_for_status()
+        
+        # Excelファイルを読み込み
+        wb = load_workbook(BytesIO(response.content))
+        ws = wb.active
+        data = []
+        
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if row[0]:
+                try:
+                    date_str = str(row[0]).split()[0]
+                    for fmt in ("%Y/%m/%d", "%Y-%m-%d"):
+                        try:
+                            row_date = datetime.strptime(date_str, fmt).date()
+                            break
+                        except:
+                            continue
+                    else:
                         continue
-                else:
+                    
+                    data.append({
+                        "日付": row_date,
+                        "開始": row[1],
+                        "終了": row[2],
+                        "タスク": row[3],
+                        "分": float(row[4]) if row[4] else 0,
+                        "メモ": row[5] if row[5] else ""
+                    })
+                except:
                     continue
-                
-                data.append({
-                    "日付": row_date,
-                    "開始": row[1],
-                    "終了": row[2],
-                    "タスク": row[3],
-                    "分": float(row[4]) if row[4] else 0,
-                    "メモ": row[5] if row[5] else ""
-                })
-            except:
-                continue
-    
-    return pd.DataFrame(data)
+        
+        return pd.DataFrame(data)
+    except Exception as e:
+        st.error(f"データ読み込みエラー: {str(e)}")
+        return pd.DataFrame()
 
 df = load_data()
 
@@ -188,5 +195,4 @@ st.dataframe(display_df, use_container_width=True, height=400)
 
 # フッター
 st.markdown("---")
-
-st.caption("🔄 データは60秒ごとに自動更新されます")
+st.caption("🔄 データは60秒ごとに自動更新されます（OneDrive連携）")
